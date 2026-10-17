@@ -1,0 +1,21 @@
+{
+  "name": "shogi-dojo",
+  "version": "0.4.0",
+  "description": "将棋オンライン道場 v04（BusinessMaker）",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "test": "node test/core.test.js && node test/persist.test.js && node test/server.test.js"
+  },
+  "engines": { "node": ">=22.13" },
+  "dependencies": {
+    "express": "^4.21.0",
+    "socket.io": "^4.8.0"
+  },
+  "optionalDependencies": {
+    "fairy-stockfish-nnue.wasm": "^1.1.11"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.0"
+  }
+}

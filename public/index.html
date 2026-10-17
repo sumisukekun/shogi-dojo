@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>将棋オンライン道場</title>
+<meta name="description" content="落ち着いて本格的に指せるオンライン将棋道場。対局・観戦・AI練習が無料で。">
+<meta name="theme-color" content="#15171a">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="logo">将棋<span>オンライン</span>道場</div>
+  <div class="status"><span id="online">接続中…</span></div>
+  <div class="me" id="me"></div>
+</header>
+
+<main>
+  <!-- ロビー -->
+  <section id="lobby" class="lobby">
+    <div class="card">
+      <h2>対局する</h2>
+      <label class="field">名前
+        <span class="row"><input id="name" maxlength="16" placeholder="ハンドルネーム"><button id="saveName" class="btn">変更</button></span>
+      </label>
+      <label class="field">持ち時間
+        <select id="tc"></select>
+      </label>
+      <button id="seekBtn" class="btn btn-primary btn-big">対局待ちをする</button>
+      <div id="waiting" class="waiting" hidden>
+        <span class="spinner"></span><span id="waitText">対戦相手を探しています…</span>
+        <button id="cancelSeek" class="btn btn-small">やめる</button>
+      </div>
+      <label class="check"><input type="checkbox" id="baton" checked> 待っている間はAIと練習する（相手が見つかったら自動で切り替え）</label>
+    </div>
+
+    <div class="card">
+      <h2>AIと練習</h2>
+      <label class="field">強さ
+        <select id="aiLevel">
+          <option value="1">入門</option><option value="2">初級</option><option value="3" selected>中級</option>
+          <option value="4">上級</option><option value="5">最強</option>
+        </select>
+      </label>
+      <label class="field">手番
+        <select id="aiSide"><option value="0">先手（自分から指す）</option><option value="1">後手</option><option value="r">ランダム</option></select>
+      </label>
+      <button id="aiBtn" class="btn btn-big">AIと対局する</button>
+      <p class="note">AIはあなたの端末の中で動きます。<span id="aiEngine"></span></p>
+    </div>
+
+    <div class="card">
+      <h2>対局中の将棋 <small>（タップで観戦）</small></h2>
+      <ul id="gameList" class="game-list"><li class="empty">いまは対局がありません</li></ul>
+    </div>
+
+    <div class="card">
+      <h2>自分の戦績</h2>
+      <p class="stats" id="myStats">—</p>
+      <ul id="myGames" class="game-list"><li class="empty">まだ対局がありません</li></ul>
+    </div>
+
+    <div class="card">
+      <h2>レーティング順位</h2>
+      <ol id="ranking" class="ranking"><li class="empty">まだ対局がありません</li></ol>
+    </div>
+
+    <div class="card chat-card">
+      <h2>ロビーチャット</h2>
+      <div class="chat-log" id="lobbyChat"></div>
+      <form class="chat-form" data-room="lobby"><input maxlength="200" placeholder="メッセージ"><button class="btn">送信</button></form>
+    </div>
+  </section>
+
+  <!-- 対局室 -->
+  <section id="room" class="room" hidden>
+    <div class="play">
+      <div class="pbar" id="pTop"><span class="pname"></span><span class="clock"></span></div>
+      <div id="board" class="shogi"></div>
+      <div class="pbar" id="pBottom"><span class="pname"></span><span class="clock"></span></div>
+    </div>
+    <aside class="side">
+      <div class="info" id="info"></div>
+      <div class="actions">
+        <button id="resignBtn" class="btn btn-danger">投了</button>
+        <button id="hintBtn" class="btn">ヒント</button>
+        <button id="flipBtn" class="btn">盤反転</button>
+        <button id="copyBtn" class="btn">棋譜コピー</button>
+        <button id="backBtn" class="btn">ロビーへ</button>
+      </div>
+      <div class="replay-nav" id="replayNav" hidden>
+        <button class="btn" data-r="first">⏮</button><button class="btn" data-r="prev">◀</button>
+        <span id="replayPos">0 / 0</span>
+        <button class="btn" data-r="next">▶</button><button class="btn" data-r="last">⏭</button>
+      </div>
+      <ol class="kifu" id="kifu"></ol>
+      <div class="chat-card" id="gameChatBox">
+        <div class="chat-log" id="gameChat"></div>
+        <form class="chat-form" data-room="game"><input maxlength="200" placeholder="対局室チャット（感想戦など）"><button class="btn">送信</button></form>
+      </div>
+    </aside>
+  </section>
+</main>
+
+<div class="result" id="result" hidden><div class="result-box"><h3 id="resultTitle"></h3><p id="resultText"></p><button class="btn btn-primary" id="resultClose">閉じる</button></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/shogi-core.js"></script>
+<script src="/js/shogi-ai.js"></script>
+<script src="/js/shogi-ui.js"></script>
+<script src="/js/client-ws.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>
