@@ -93,7 +93,7 @@ systemctl restart shogi-dojo
 
 # ---- nginx（Web公開・WebSocket対応） ----
 IP=$(curl -fsS4 --max-time 5 https://api.ipify.org 2>/dev/null || hostname -I | awk '{print $1}')
-NAMES="$IP"; [ -n "$DOMAIN" ] && NAMES="$DOMAIN $IP"
+NAMES="$IP"; [ -n "$DOMAIN" ] && NAMES="$DOMAIN"   # ドメイン指定時は IP を使わない（他サイトと共存するため）
 if [ -d /etc/nginx/sites-available ]; then
   CONF=/etc/nginx/sites-available/shogi-dojo
   ln -sf "$CONF" /etc/nginx/sites-enabled/shogi-dojo
@@ -144,8 +144,7 @@ if curl -fsS "http://127.0.0.1:$PORT/health"; then
   echo
   echo "============================================"
   echo " 設置完了！ ブラウザで開いてください:"
-  echo "   http://$IP/"
-  [ -n "$DOMAIN" ] && echo "   https://$DOMAIN/"
+  if [ -n "$DOMAIN" ]; then echo "   https://$DOMAIN/"; else echo "   http://$IP/"; fi
   echo "============================================"
 else
   echo "起動に失敗しました。次のコマンドの結果を Claude に送ってください:"
