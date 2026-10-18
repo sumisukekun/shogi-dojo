@@ -91,6 +91,13 @@ systemctl daemon-reload
 systemctl enable shogi-dojo >/dev/null 2>&1
 systemctl restart shogi-dojo
 
+# ---- 毎日のバックアップ（14日分、/opt/shogi-dojo/backup） ----
+cat > /etc/cron.daily/shogi-dojo-backup <<CRON
+#!/bin/sh
+cd $APP_DIR && runuser -u $APP_USER -- $(command -v node) deploy/backup.js $APP_DIR/backup >/dev/null 2>&1
+CRON
+chmod +x /etc/cron.daily/shogi-dojo-backup
+
 # ---- nginx（Web公開・WebSocket対応） ----
 IP=$(curl -fsS4 --max-time 5 https://api.ipify.org 2>/dev/null || hostname -I | awk '{print $1}')
 NAMES="$IP"; [ -n "$DOMAIN" ] && NAMES="$DOMAIN"   # ドメイン指定時は IP を使わない（他サイトと共存するため）

@@ -58,12 +58,12 @@ const io = new Server(server, { maxHttpBufferSize: 1e4, pingInterval: 10000, pin
 // main: 持ち時間, byoyomi: 秒読み, inc: 1手ごとの加算（フィッシャー）
 const TIME_CONTROLS = {
   kire3:      { label: '3分切れ負け',            main: 3 * 60e3,  byoyomi: 0,     inc: 0 },
-  fischer5:   { label: '5分＋1手5秒（加算）',     main: 5 * 60e3,  byoyomi: 0,     inc: 5e3 },
+  fischer5:   { label: '5分＋1手5秒',     main: 5 * 60e3,  byoyomi: 0,     inc: 5e3 },
   kire10:     { label: '10分切れ負け',           main: 10 * 60e3, byoyomi: 0,     inc: 0 },
   m10b30:     { label: '10分＋秒読み30秒',       main: 10 * 60e3, byoyomi: 30e3,  inc: 0 },
-  hayasashi2: { label: '早指し（秒読み30秒）',    main: 0,         byoyomi: 30e3,  inc: 0 },
+  hayasashi2: { label: '秒読み30秒',    main: 0,         byoyomi: 30e3,  inc: 0 },
   m15b60:     { label: '15分＋秒読み60秒',       main: 15 * 60e3, byoyomi: 60e3,  inc: 0 },
-  m30b60:     { label: '長考（30分＋秒読み60秒）', main: 30 * 60e3, byoyomi: 60e3,  inc: 0 },
+  m30b60:     { label: '長考 30分＋60秒', main: 30 * 60e3, byoyomi: 60e3,  inc: 0 },
 };
 const DEFAULT_TC = 'm10b30';
 const GRACE_MS = 1000;            // 通信遅延の猶予

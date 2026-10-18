@@ -95,6 +95,66 @@
     }
 
     stop() { if (this.engine) this.engine.postMessage('stop'); }
+
+    get canAnalyze() { return !!this.engine; }
+
+    /**
+     * 棋譜の全局面を解析する（AI感想戦用）。
+     * 戻り値: [{ score: 先手から見た評価値, mate, best: 最善手USI, pv: 読み筋USI[] }]（局面数 = 手数+1）
+     */
+    async analyze(startSfen, moves, { movetime = 300, onProgress, isCancelled } = {}) {
+      await this.ready;
+      if (!this.engine) throw new Error('no_engine');
+      this.engine.postMessage('setoption name Skill_Level value 20');
+      this.engine.postMessage('setoption name USI_Hash value 32');
+      const startTurn = C.fromSfen(startSfen).turn;
+      const out = [];
+      for (let i = 0; i <= moves.length; i++) {
+        if (isCancelled && isCancelled()) throw new Error('cancelled');
+        const turn = (startTurn + i) % 2;
+        const g = new C.Game(startSfen);
+        moves.slice(0, i).forEach((u) => g.play(u));
+        let r;
+        if (!C.hasLegalMove(g.pos)) r = { score: turn === 0 ? -30000 : 30000, mate: 0, best: null, pv: [] };
+        else r = await this.searchOne('position sfen ' + startSfen + (i ? ' moves ' + moves.slice(0, i).join(' ') : ''), movetime, turn, g);
+        out.push(r);
+        if (onProgress) onProgress(i + 1, moves.length + 1);
+      }
+      return out;
+    }
+
+    searchOne(posCmd, movetime, turn, game) {
+      return new Promise((resolve) => {
+        let last = null;
+        const fn = (line) => {
+          if (line.startsWith('info') && / score /.test(line) && / pv /.test(line)) last = line;
+          if (!line.startsWith('bestmove')) return;
+          this.listeners = this.listeners.filter((f) => f !== fn);
+          clearTimeout(t);
+          let cp = 0, mate = null, pv = [];
+          if (last) {
+            const sm = last.match(/ score (cp|mate) (-?\d+)/);
+            if (sm) {
+              if (sm[1] === 'cp') cp = +sm[2];
+              else { mate = +sm[2]; cp = (mate > 0 ? 1 : -1) * (30000 - Math.abs(mate) * 100); }
+            }
+            const pm = last.match(/ pv (.+)$/);
+            if (pm) pv = pm[1].trim().split(/\s+/);
+          }
+          const best = line.split(/\s+/)[1];
+          // 読み筋は合法手だけを残す（存在しない手を表示しない）
+          const g = new C.Game(game.startSfen); game.moves.forEach((m) => g.play(m.usi));
+          const okPv = [];
+          for (const u of pv) { if (!g.play(u)) break; okPv.push(u); if (okPv.length >= 8) break; }
+          const bestOk = C.moveFromUsi(game.pos, best) ? best : (okPv[0] || null);
+          resolve({ score: turn === 0 ? cp : -cp, mate: mate === null ? null : (turn === 0 ? mate : -mate), best: bestOk, pv: okPv });
+        };
+        const t = setTimeout(() => this.engine.postMessage('stop'), movetime + 5000);
+        this.listeners.push(fn);
+        this.engine.postMessage(posCmd);
+        this.engine.postMessage('go movetime ' + movetime);
+      });
+    }
   }
 
   function loadScript(src) {

@@ -4,75 +4,76 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>将棋オンライン道場</title>
-<meta name="description" content="落ち着いて本格的に指せるオンライン将棋道場。対局・観戦・AI練習が無料で。">
-<meta name="theme-color" content="#15171a">
+<meta name="description" content="無料で指し放題のオンライン将棋道場。対局・観戦・AI練習・AI感想戦・詰将棋。">
+<meta name="theme-color" content="#1b2330">
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 <header class="top">
-  <div class="logo">将棋<span>オンライン</span>道場</div>
-  <div class="status"><span id="online">接続中…</span></div>
-  <div class="me" id="me"></div>
+  <button class="logo" id="homeBtn" aria-label="ロビーへ戻る">将棋<b>オンライン</b>道場</button>
+  <div class="status" id="online">接続中…</div>
+  <button class="me" id="meBtn" aria-label="自分の記録と設定"><span class="dan" id="meDan">—</span><span id="meName"></span></button>
 </header>
 
 <main>
-  <!-- ロビー -->
+  <!-- ===== ロビー ===== -->
   <section id="lobby" class="lobby">
-    <div class="card">
-      <h2>対局する</h2>
-      <label class="field">名前
-        <span class="row"><input id="name" maxlength="16" placeholder="ハンドルネーム"><button id="saveName" class="btn">変更</button></span>
-      </label>
-      <label class="field">持ち時間
-        <select id="tc"></select>
-      </label>
-      <button id="seekBtn" class="btn btn-primary btn-big">対局待ちをする</button>
+    <div class="quick">
+      <h1 class="quick-title">すぐ対局</h1>
+      <div class="tc-grid" id="tcGrid" role="radiogroup" aria-label="持ち時間"></div>
+      <div class="quick-row">
+        <div class="seg" role="radiogroup" aria-label="対局の種類">
+          <button class="seg-b on" data-rated="1" role="radio" aria-checked="true">レート対局</button>
+          <button class="seg-b" data-rated="0" role="radio" aria-checked="false">練習（レートなし）</button>
+        </div>
+        <label class="check"><input type="checkbox" id="baton" checked> 待つ間はAIと練習</label>
+      </div>
+      <button id="seekBtn" class="btn btn-primary btn-big">対局する</button>
       <div id="waiting" class="waiting" hidden>
-        <span class="spinner"></span><span id="waitText">対戦相手を探しています…</span>
+        <span class="spinner"></span><span id="waitText">近い棋力の相手を探しています…</span>
         <button id="cancelSeek" class="btn btn-small">やめる</button>
       </div>
-      <label class="check"><input type="checkbox" id="baton" checked> 待っている間はAIと練習する（相手が見つかったら自動で切り替え）</label>
     </div>
 
-    <div class="card">
-      <h2>AIと練習</h2>
-      <label class="field">強さ
-        <select id="aiLevel">
-          <option value="1">入門</option><option value="2">初級</option><option value="3" selected>中級</option>
-          <option value="4">上級</option><option value="5">最強</option>
-        </select>
-      </label>
-      <label class="field">手番
-        <select id="aiSide"><option value="0">先手（自分から指す）</option><option value="1">後手</option><option value="r">ランダム</option></select>
-      </label>
-      <button id="aiBtn" class="btn btn-big">AIと対局する</button>
-      <p class="note">AIはあなたの端末の中で動きます。<span id="aiEngine"></span></p>
+    <nav class="actions-list" aria-label="その他の遊び方">
+      <button class="act" data-open="aiDlg"><span class="act-ic">☖</span><span><b>AIと練習</b><small>強さを選んで、待ったもできる</small></span></button>
+      <button class="act" data-open="friendDlg"><span class="act-ic">合</span><span><b>友達と指す</b><small>合言葉（6桁）で部屋を作る</small></span></button>
+      <button class="act" data-open="importDlg"><span class="act-ic">析</span><span><b>棋譜を解析</b><small>他のアプリの棋譜（KIF・CSA）もAIが感想戦</small></span></button>
+      <button class="act" id="tsumeBtn"><span class="act-ic">詰</span><span><b>今日の詰将棋</b><small>1手詰・3手詰 <span id="tsumeProgress"></span></small></span></button>
+    </nav>
+
+    <div class="panel" id="gamesPanel">
+      <h2>対局中の将棋 <small>タップで観戦</small></h2>
+      <ul id="gameList" class="game-list"><li class="empty">いまは対局がありません。最初の一局をどうぞ。</li></ul>
     </div>
 
-    <div class="card">
-      <h2>対局中の将棋 <small>（タップで観戦）</small></h2>
-      <ul id="gameList" class="game-list"><li class="empty">いまは対局がありません</li></ul>
+    <div class="panel">
+      <h2>自分の記録</h2>
+      <div class="record">
+        <div class="dan-badge" id="recDan">—</div>
+        <div class="rec-nums"><b id="recRating">R—</b><span id="recWL"></span><span id="recStreak"></span></div>
+      </div>
+      <p class="rgraph-note" id="ratingNote">レート対局を2局以上指すと、ここにレーティングの推移が出ます。</p>
+      <svg class="rgraph" id="ratingGraph" hidden viewBox="0 0 300 70" preserveAspectRatio="none" aria-label="レーティングの推移"></svg>
+      <ul id="myGames" class="game-list small"><li class="empty">対局すると、ここに棋譜が残ります。</li></ul>
     </div>
 
-    <div class="card">
-      <h2>自分の戦績</h2>
-      <p class="stats" id="myStats">—</p>
-      <ul id="myGames" class="game-list"><li class="empty">まだ対局がありません</li></ul>
-    </div>
-
-    <div class="card">
+    <div class="panel">
       <h2>レーティング順位</h2>
-      <ol id="ranking" class="ranking"><li class="empty">まだ対局がありません</li></ol>
+      <ol id="ranking" class="ranking"><li class="empty">まだ順位はありません。</li></ol>
     </div>
 
-    <div class="card chat-card">
+    <div class="panel chat-card">
       <h2>ロビーチャット</h2>
-      <div class="chat-log" id="lobbyChat"></div>
-      <form class="chat-form" data-room="lobby"><input maxlength="200" placeholder="メッセージ"><button class="btn">送信</button></form>
+      <div class="chat-log" id="lobbyChat" aria-live="polite"></div>
+      <form class="chat-form" data-room="lobby"><input maxlength="200" placeholder="メッセージ" aria-label="ロビーチャットに書く"><button class="btn">送信</button></form>
     </div>
+    <footer class="foot">
+      <button class="linkish" data-open="aboutDlg">このサイトについて・利用規約</button>
+    </footer>
   </section>
 
-  <!-- 対局室 -->
+  <!-- ===== 対局室 / 解析 / 詰将棋 ===== -->
   <section id="room" class="room" hidden>
     <div class="play">
       <div class="pbar" id="pTop"><span class="pname"></span><span class="clock"></span></div>
@@ -80,36 +81,157 @@
       <div class="pbar" id="pBottom"><span class="pname"></span><span class="clock"></span></div>
     </div>
     <aside class="side">
-      <div class="info" id="info"></div>
-      <div class="actions">
+      <div class="info" id="info" aria-live="polite"></div>
+      <div class="actions" id="actions">
         <button id="resignBtn" class="btn btn-danger">投了</button>
+        <button id="declareBtn" class="btn" title="入玉宣言（27点法）">入玉宣言</button>
+        <button id="undoBtn" class="btn">待った</button>
         <button id="hintBtn" class="btn">ヒント</button>
+        <button id="analyzeBtn" class="btn btn-accent">AI感想戦</button>
+        <button id="rematchBtn" class="btn btn-primary">もう一局</button>
         <button id="flipBtn" class="btn">盤反転</button>
-        <button id="copyBtn" class="btn">棋譜コピー</button>
+        <button id="kifBtn" class="btn">棋譜</button>
         <button id="backBtn" class="btn">ロビーへ</button>
       </div>
+
+      <!-- 解析 -->
+      <div class="analysis" id="analysis" hidden>
+        <div class="an-head"><b>AI感想戦</b><span id="anStatus"></span></div>
+        <svg class="evgraph" id="evGraph" viewBox="0 0 600 160" preserveAspectRatio="none" aria-label="評価値グラフ"></svg>
+        <div class="an-sum" id="anSummary"></div>
+        <div class="an-text" id="anText"></div>
+        <div class="an-acts">
+          <button class="btn btn-small" id="anPrevBad">◀ 前の悪手</button>
+          <button class="btn btn-small" id="anNextBad">次の悪手 ▶</button>
+          <button class="btn btn-small" id="anFromHere">この局面からAIと指す</button>
+        </div>
+      </div>
+
+      <!-- 詰将棋 -->
+      <div class="tsume" id="tsumePanel" hidden>
+        <div class="ts-head"><b id="tsTitle"></b><span id="tsScore"></span></div>
+        <p id="tsMsg">先手（あなた）の番です。王手の連続で玉を詰ませてください。</p>
+        <div class="an-acts">
+          <button class="btn btn-small" id="tsRetry">やり直す</button>
+          <button class="btn btn-small" id="tsAnswer">答えを見る</button>
+          <button class="btn btn-small btn-primary" id="tsNext">次の問題</button>
+          <button class="btn btn-small" id="tsMode"></button>
+        </div>
+      </div>
+
       <div class="replay-nav" id="replayNav" hidden>
-        <button class="btn" data-r="first">⏮</button><button class="btn" data-r="prev">◀</button>
+        <button class="btn" data-r="first" aria-label="最初へ">⏮</button><button class="btn" data-r="prev" aria-label="1手戻る">◀</button>
         <span id="replayPos">0 / 0</span>
-        <button class="btn" data-r="next">▶</button><button class="btn" data-r="last">⏭</button>
+        <button class="btn" data-r="next" aria-label="1手進む">▶</button><button class="btn" data-r="last" aria-label="最後へ">⏭</button>
       </div>
       <ol class="kifu" id="kifu"></ol>
       <div class="chat-card" id="gameChatBox">
-        <div class="chat-log" id="gameChat"></div>
-        <form class="chat-form" data-room="game"><input maxlength="200" placeholder="対局室チャット（感想戦など）"><button class="btn">送信</button></form>
+        <div class="chat-log" id="gameChat" aria-live="polite"></div>
+        <form class="chat-form" data-room="game"><input maxlength="200" placeholder="対局室チャット（感想戦など）" aria-label="対局室チャットに書く"><button class="btn">送信</button></form>
       </div>
     </aside>
   </section>
 </main>
 
-<div class="result" id="result" hidden><div class="result-box"><h3 id="resultTitle"></h3><p id="resultText"></p><button class="btn btn-primary" id="resultClose">閉じる</button></div></div>
-<div class="toast" id="toast" hidden></div>
+<!-- ===== ダイアログ ===== -->
+<dialog id="aiDlg" class="dlg">
+  <form method="dialog">
+    <h3>AIと練習</h3>
+    <label class="field">強さ
+      <select id="aiLevel">
+        <option value="1">入門（10級くらいまで）</option><option value="2">初級</option><option value="3" selected>中級</option>
+        <option value="4">上級</option><option value="5">最強</option>
+      </select>
+    </label>
+    <label class="field">手番
+      <select id="aiSide"><option value="0">先手（自分から指す）</option><option value="1">後手</option><option value="r">ランダム</option></select>
+    </label>
+    <p class="note" id="aiEngine">AIはあなたの端末の中で動きます。</p>
+    <div class="dlg-acts"><button class="btn" value="cancel">閉じる</button><button class="btn btn-primary" id="aiStart" value="ok">AIと指す</button></div>
+  </form>
+</dialog>
+
+<dialog id="friendDlg" class="dlg">
+  <form method="dialog">
+    <h3>友達と指す</h3>
+    <p class="note">部屋を作ると6桁の合言葉が出ます。友達に伝えて、「合言葉で入る」から入ってもらってください。レーティングは変わりません。</p>
+    <label class="field">持ち時間<select id="friendTc"></select></label>
+    <button class="btn btn-primary btn-wide" id="createRoom" type="button">部屋を作る</button>
+    <div class="code-box" id="codeBox" hidden><span>合言葉</span><b id="roomCode"></b><small>相手が入ると自動で始まります</small></div>
+    <hr>
+    <label class="field">合言葉で入る<input id="joinCode" inputmode="numeric" maxlength="6" placeholder="6桁の数字"></label>
+    <button class="btn btn-wide" id="joinRoom" type="button">入る</button>
+    <div class="dlg-acts"><button class="btn" value="cancel">閉じる</button></div>
+  </form>
+</dialog>
+
+<dialog id="importDlg" class="dlg">
+  <form method="dialog">
+    <h3>棋譜を解析</h3>
+    <p class="note">KIF・CSA形式の棋譜を貼り付けるか、ファイルを選んでください（平手のみ）。他の将棋アプリで「棋譜をコピー」したものも使えます。</p>
+    <textarea id="importText" rows="8" placeholder="ここに棋譜を貼り付け"></textarea>
+    <label class="field">ファイルから読む<input type="file" id="importFile" accept=".kif,.kifu,.csa,.txt"></label>
+    <p class="err" id="importErr" hidden></p>
+    <div class="dlg-acts"><button class="btn" value="cancel">閉じる</button><button class="btn btn-primary" id="importGo" type="button">読み込んで解析</button></div>
+  </form>
+</dialog>
+
+<dialog id="meDlg" class="dlg">
+  <form method="dialog">
+    <h3>名前と設定</h3>
+    <label class="field">名前（16文字まで・他の人と同じ名前は使えません）
+      <span class="row"><input id="name" maxlength="16"><button class="btn" id="saveName" type="button">変更</button></span>
+    </label>
+    <label class="check"><input type="checkbox" id="soundOn"> 駒音・効果音</label>
+    <label class="check"><input type="checkbox" id="confirmMove"> 指す前に確認する（誤操作防止）</label>
+    <hr>
+    <h4>別の端末・アプリで続ける</h4>
+    <p class="note">引き継ぎコードを別の端末で入力すると、同じ名前・レーティングで続けられます。コードは他人に教えないでください。</p>
+    <div class="row"><input id="myCode" readonly><button class="btn" id="showCode" type="button">表示</button><button class="btn" id="copyCode" type="button">コピー</button></div>
+    <label class="field">引き継ぎコードを入力<span class="row"><input id="transferCode" autocomplete="off"><button class="btn" id="doTransfer" type="button">引き継ぐ</button></span></label>
+    <p class="err" id="meErr" hidden></p>
+    <div class="dlg-acts"><button class="btn" value="cancel">閉じる</button></div>
+  </form>
+</dialog>
+
+<dialog id="kifDlg" class="dlg">
+  <form method="dialog">
+    <h3>棋譜</h3>
+    <textarea id="kifText" rows="12" readonly></textarea>
+    <div class="dlg-acts"><button class="btn" id="kifCopy" type="button">コピー</button><button class="btn" id="kifSave" type="button">ファイルに保存</button><button class="btn" value="cancel">閉じる</button></div>
+  </form>
+</dialog>
+
+<dialog id="aboutDlg" class="dlg">
+  <form method="dialog">
+    <h3>このサイトについて</h3>
+    <p>将棋オンライン道場は、BusinessMaker が個人で運営する無料のオンライン将棋道場です。対局は回数無制限・無料です。</p>
+    <h4>利用のルール</h4>
+    <ul class="rules">
+      <li>レート対局で、AIや他人の助けを借りて指すことは禁止です。</li>
+      <li>暴言・荒らし・なりすましは禁止です。チャットの名前を押すと、ミュート・通報ができます。</li>
+      <li>運営は予告なくサービス内容を変更・停止することがあります。</li>
+    </ul>
+    <h4>保存するデータ</h4>
+    <p>名前、レーティング、戦績、棋譜、チャット通報の内容を保存します。本人確認のための番号は、ブラウザ内とサーバー（暗号化した形）に保存します。</p>
+    <h4>使用しているソフトウェア</h4>
+    <p>AI（ブラウザ内で動作）に <a href="https://github.com/fairy-stockfish/fairy-stockfish.wasm" target="_blank" rel="noopener">Fairy-Stockfish</a>（GPL-3.0、作者 Fabian Fichter ほか）を改変せずに使用しています。ソースコードは上記リンクから入手できます。このサイトのソースコードは <a href="https://github.com/sumisukekun/shogi-dojo" target="_blank" rel="noopener">GitHub</a> で公開しています。</p>
+    <div class="dlg-acts"><button class="btn" value="cancel">閉じる</button></div>
+  </form>
+</dialog>
+
+<div class="pop" id="namePop" hidden><b id="popName"></b><button class="btn btn-small" id="popMute">ミュート</button><button class="btn btn-small btn-danger" id="popReport">通報</button></div>
+<div class="result" id="result" hidden><div class="result-box"><h3 id="resultTitle"></h3><p id="resultText"></p>
+  <div class="dlg-acts"><button class="btn btn-accent" id="resultAnalyze">AI感想戦</button><button class="btn btn-primary" id="resultRematch">もう一局</button><button class="btn" id="resultClose">閉じる</button></div></div></div>
+<div class="toast" id="toast" role="status" hidden></div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="/js/shogi-core.js"></script>
+<script src="/js/analysis.js"></script>
 <script src="/js/shogi-ai.js"></script>
 <script src="/js/shogi-ui.js"></script>
 <script src="/js/client-ws.js"></script>
+<script src="/js/sound.js"></script>
 <script src="/js/app.js"></script>
 </body>
 </html>
