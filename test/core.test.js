@@ -86,5 +86,52 @@ ok(C.toSfen(start) === C.START_SFEN, 'SFEN 往復');
   ok(r1.kif === '▲７六歩' && r2.kif === '△３四歩' && r3.kif === '▲２二角成' && r4.kif === '△同　銀', '棋譜表記: ' + [r1, r2, r3, r4].map((r) => r.kif).join(' '));
 }
 
+// 11. 入玉宣言（27点法）
+{
+  // 先手玉が敵陣、敵陣に大駒2枚＋小駒8枚＝18点、持ち駒で10点 → 28点・10枚
+  const ok1 = C.fromSfen('RBGGSSNN1/PPK6/9/9/9/9/9/9/7k1 b 10P 1');
+  const i1 = C.declareInfo(ok1);
+  ok(i1.ok && i1.points === 28 && i1.pieces === 10, '入玉宣言：28点・10枚で成立 ' + JSON.stringify(i1));
+  const ng = C.fromSfen('RBGGSSNN1/PPK6/9/9/9/9/9/9/7k1 b 9P 1');
+  ok(!C.declareInfo(ng).ok, '入玉宣言：27点（先手）は不成立');
+  const g = new C.Game('RBGGSSNN1/PPK6/9/9/9/9/9/9/7k1 b 10P 1');
+  g.declare();
+  ok(g.result && g.result.reason === 'nyugyoku' && g.result.winner === 0, '宣言成功で手番側の勝ち');
+  const g2 = new C.Game();
+  g2.declare();
+  ok(g2.result && g2.result.reason === 'bad_declare' && g2.result.winner === 1, '条件不足の宣言は反則負け');
+}
+
+// 12. 待った（undo）
+{
+  const g = new C.Game();
+  ['7g7f', '3c3d', '2g2f'].forEach((u) => g.play(u));
+  g.undo(2);
+  ok(g.moves.length === 1 && g.pos.turn === 1 && C.toSfen(g.pos).startsWith('lnsgkgsnl/1r5b1/ppppppppp/9/9/2P6/PP1PPPPPP'), '待った（2手戻す）');
+}
+
+// 13. KIF 出力 → 読み込みで元に戻る
+{
+  const moves = ['7g7f', '3c3d', '8h2b+', '3a2b', 'B*4e', '8b3b', '4e3d', '2b3c', '3d4e', '3c4d', '4e5f'];
+  const g = new C.Game(); moves.forEach((u) => g.play(u));
+  const kif = C.toKifFile(C.START_SFEN, moves, { sente: '太郎', gote: '花子', result: { reason: 'resign' } });
+  const back = C.parseKifu(kif);
+  ok(back.moves.join(' ') === moves.join(' ') && back.sente === '太郎', 'KIF 出力→読込で一致');
+  ok(/   3 ２二角成\(88\)/.test(kif) && /   4 同　銀\(31\)/.test(kif) && /   5 ４五角打/.test(kif), 'KIF 表記（成・同・打）');
+}
+
+// 14. CSA 読み込み
+{
+  const csa = 'V2.2\nN+先手さん\nN-後手さん\nPI\n+\n+7776FU\n-3334FU\n+8822UM\n-3122GI\n%TORYO\n';
+  const r = C.parseKifu(csa);
+  ok(r.moves.join(' ') === '7g7f 3c3d 8h2b+ 3a2b' && r.gote === '後手さん', 'CSA 読み込み（成りを含む）');
+}
+
+// 15. 位置省略（KI2風）の読み込み
+{
+  const r = C.parseKifu('手合割：平手\n手数----指手--\n1 ▲７六歩\n2 △３四歩\n3 ▲２二角成\n4 △同　銀\n');
+  ok(r.moves.join(' ') === '7g7f 3c3d 8h2b+ 3a2b', '位置省略の棋譜も読める');
+}
+
 console.log(fail ? `\n${fail} 件失敗` : '\nすべて成功');
 process.exit(fail ? 1 : 0);

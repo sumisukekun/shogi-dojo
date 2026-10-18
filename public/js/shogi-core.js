@@ -319,6 +319,29 @@
   }
 
   // ---- 対局（千日手・詰み管理） ----
+  // ---- 入玉宣言（27点法・CSA/日本将棋連盟ルール準拠） ----
+  function declareInfo(pos) {
+    const s = pos.turn, b = pos.board;
+    const king = findKing(pos, s);
+    const inZoneR = (r) => (s === 0 ? r <= 2 : r >= 6);
+    let pieces = 0, points = 0;
+    for (let i = 0; i < 81; i++) {
+      const p = b[i];
+      if (!p || side(p) !== s || kind(p) === K) continue;
+      if (!inZoneR((i / 9) | 0)) continue;
+      pieces++;
+      const k = UNPROMOTE[kind(p)] || kind(p);
+      points += (k === B || k === R) ? 5 : 1;
+    }
+    for (let k = 1; k <= 7; k++) points += pos.hands[s][k] * ((k === B || k === R) ? 5 : 1);
+    const need = s === 0 ? 28 : 27;
+    const kingIn = king >= 0 && inZoneR((king / 9) | 0);
+    const check = inCheck(pos);
+    return { ok: kingIn && pieces >= 10 && points >= need && !check, kingIn, pieces, points, need, check };
+  }
+
+  const MAX_PLY = 512; // これを超えたら持将棋（引き分け）
+
   class Game {
     constructor(sfen) {
       this.startSfen = sfen || START_SFEN;
@@ -341,7 +364,22 @@
       const rec = { usi: moveToUsi(m), kif, to: m.to, check };
       this.moves.push(rec);
       this.result = this.evaluate();
+      if (!this.result && this.moves.length >= MAX_PLY) this.result = { winner: -1, reason: 'jishogi' };
       return rec;
+    }
+    /** 入玉宣言。条件を満たせば手番側の勝ち、満たさなければ手番側の負け。 */
+    declare() {
+      if (this.result) return null;
+      const info = declareInfo(this.pos);
+      this.result = info.ok ? { winner: this.pos.turn, reason: 'nyugyoku' } : { winner: 1 - this.pos.turn, reason: 'bad_declare' };
+      return info;
+    }
+    /** n手戻す（練習用の「待った」） */
+    undo(n = 1) {
+      const keep = this.moves.slice(0, Math.max(0, this.moves.length - n)).map((m) => m.usi);
+      const g = new Game(this.startSfen);
+      keep.forEach((u) => g.play(u));
+      Object.assign(this, { pos: g.pos, history: g.history, moves: g.moves, result: null });
     }
     evaluate() {
       const pos = this.pos;
@@ -367,6 +405,117 @@
     }
   }
 
+  // ---- 棋譜ファイル（KIF / CSA） ----
+  const ZEN_D = '０１２３４５６７８９';
+  const KAN_D = '〇一二三四五六七八九';
+  const KIF_PIECE = { 1: '歩', 2: '香', 3: '桂', 4: '銀', 5: '金', 6: '角', 7: '飛', 8: '玉', 9: 'と', 10: '成香', 11: '成桂', 12: '成銀', 13: '馬', 14: '龍' };
+  const REASON_KIF = { resign: '投了', timeout: '切れ負け', checkmate: '詰み', sennichite: '千日手', perpetual_check: '反則負け', nyugyoku: '入玉勝ち', bad_declare: '反則負け', jishogi: '持将棋', disconnect: '切断' };
+  const fileOf = (sq) => 9 - (sq % 9), rankOf = (sq) => ((sq / 9) | 0) + 1;
+
+  function toKifFile(startSfen, usiMoves, meta = {}) {
+    if (startSfen && startSfen.split(' ')[0] !== START_SFEN.split(' ')[0]) throw new Error('KIF出力は平手のみ対応');
+    const lines = ['# KIF形式棋譜ファイル（将棋オンライン道場）'];
+    if (meta.date) lines.push('開始日時：' + meta.date);
+    lines.push('手合割：平手');
+    lines.push('先手：' + (meta.sente || '先手'));
+    lines.push('後手：' + (meta.gote || '後手'));
+    lines.push('手数----指手---------消費時間--');
+    let pos = fromSfen(START_SFEN), prev = -1, n = 0;
+    for (const u of usiMoves) {
+      const m = moveFromUsi(pos, u);
+      if (!m) break;
+      n++;
+      const dest = m.to === prev ? '同　' : ZEN_D[fileOf(m.to)] + KAN_D[rankOf(m.to)];
+      let t = dest + KIF_PIECE[m.piece];
+      if (m.drop) t += '打';
+      else { if (m.promote) t += '成'; else if (m.canPromote) t += '不成'; t += '(' + fileOf(m.from) + rankOf(m.from) + ')'; }
+      lines.push(String(n).padStart(4) + ' ' + t);
+      pos = makeMove(pos, m); prev = m.to;
+    }
+    if (meta.result && REASON_KIF[meta.result.reason]) lines.push(String(n + 1).padStart(4) + ' ' + REASON_KIF[meta.result.reason]);
+    return lines.join('\n') + '\n';
+  }
+
+  /** KIF / CSA を読み込み、{ startSfen, moves(usi[]), sente, gote } を返す。読めない手があれば例外。 */
+  function parseKifu(text) {
+    text = String(text || '').replace(/\r/g, '');
+    if (/^\s*(V2|PI|P1|N\+|[+-]\d{4}[A-Z]{2})/m.test(text) && !/手数/.test(text)) return parseCsa(text);
+    return parseKif(text);
+  }
+
+  function parseKif(text) {
+    const meta = { sente: '', gote: '' };
+    const m1 = text.match(/^(?:先手|下手)：(.*)$/m); if (m1) meta.sente = m1[1].trim();
+    const m2 = text.match(/^(?:後手|上手)：(.*)$/m); if (m2) meta.gote = m2[1].trim();
+    const h = text.match(/^手合割：(.*)$/m);
+    if (h && !/平手/.test(h[1])) throw new Error('平手以外の棋譜（' + h[1].trim() + '）にはまだ対応していません');
+    const PIECES = [['成香', 10], ['成桂', 11], ['成銀', 12], ['歩', 1], ['香', 2], ['桂', 3], ['銀', 4], ['金', 5], ['角', 6], ['飛', 7], ['玉', 8], ['王', 8], ['と', 9], ['杏', 10], ['圭', 11], ['全', 12], ['馬', 13], ['龍', 14], ['竜', 14]];
+    let pos = fromSfen(START_SFEN), prev = -1;
+    const moves = [];
+    for (const raw of text.split('\n')) {
+      const line = raw.replace(/^\s+/, '');
+      const mm = line.match(/^(\d+)\s+([▲△☗☖]?同[\s　]*\S+|\S+)/);
+      if (!mm) continue;
+      let t = mm[2];
+      if (/^(投了|中断|千日手|詰み|切れ負け|反則|持将棋|入玉|不戦|封じ|TORYO)/.test(t)) break;
+      t = t.replace(/^[▲△☗☖]/, '');
+      let to;
+      if (t.startsWith('同')) { to = prev; t = t.replace(/^同[\s　]*/, ''); }
+      else {
+        const f = ZEN_D.indexOf(t[0]) > 0 ? ZEN_D.indexOf(t[0]) : +t[0];
+        const r = KAN_D.indexOf(t[1]) > 0 ? KAN_D.indexOf(t[1]) : +t[1];
+        if (!(f >= 1 && f <= 9 && r >= 1 && r <= 9)) throw new Error(mm[1] + '手目が読めません：' + mm[2]);
+        to = (r - 1) * 9 + (9 - f); t = t.slice(2);
+      }
+      const pc = PIECES.find(([n]) => t.startsWith(n));
+      if (!pc) throw new Error(mm[1] + '手目の駒が読めません：' + mm[2]);
+      t = t.slice(pc[0].length);
+      const drop = t.startsWith('打');
+      const noProm = t.startsWith('不成');
+      const prom = !noProm && t.startsWith('成');
+      const src = t.match(/\((\d)(\d)\)/);
+      const from = src ? (+src[2] - 1) * 9 + (9 - +src[1]) : -1;
+      const legal = legalMoves(pos).filter((m) => m.to === to);
+      let cand;
+      if (drop) cand = legal.filter((m) => m.drop === pc[1]);
+      else if (src) cand = legal.filter((m) => m.from === from && m.promote === prom);
+      else {
+        // 元の位置が書かれていない（KI2風）場合
+        cand = legal.filter((m) => !m.drop && kind(pos.board[m.from]) === pc[1] && m.promote === prom);
+        if (!cand.length) cand = legal.filter((m) => m.drop === pc[1]);
+      }
+      if (cand.length > 1) throw new Error(mm[1] + '手目が特定できません（右・左などの表記は未対応）：' + mm[2]);
+      const mv = cand[0] || null;
+      if (!mv) throw new Error(mm[1] + '手目が指せない手です：' + mm[2]);
+      moves.push(moveToUsi(mv)); pos = makeMove(pos, mv); prev = to;
+    }
+    return { startSfen: START_SFEN, moves, ...meta };
+  }
+
+  function parseCsa(text) {
+    const CSA = { FU: 1, KY: 2, KE: 3, GI: 4, KI: 5, KA: 6, HI: 7, OU: 8, TO: 9, NY: 10, NK: 11, NG: 12, UM: 13, RY: 14 };
+    const meta = { sente: '', gote: '' };
+    const n1 = text.match(/^N\+(.*)$/m); if (n1) meta.sente = n1[1].trim();
+    const n2 = text.match(/^N-(.*)$/m); if (n2) meta.gote = n2[1].trim();
+    let pos = fromSfen(START_SFEN);
+    const moves = [];
+    const toks = text.split(/[\n,]/).map((x) => x.trim()).filter((x) => /^[+-]\d{4}[A-Z]{2}/.test(x));
+    toks.forEach((tk, i) => {
+      const ff = +tk[1], fr = +tk[2], tf = +tk[3], tr = +tk[4], pk = CSA[tk.slice(5, 7)];
+      if (!pk) throw new Error((i + 1) + '手目が読めません：' + tk);
+      const to = (tr - 1) * 9 + (9 - tf);
+      let mv;
+      if (ff === 0) mv = legalMoves(pos).find((m) => m.drop === pk && m.to === to);
+      else {
+        const from = (fr - 1) * 9 + (9 - ff), cur = kind(pos.board[from]);
+        mv = legalMoves(pos).find((m) => m.from === from && m.to === to && m.promote === (pk !== cur));
+      }
+      if (!mv) throw new Error((i + 1) + '手目が指せない手です：' + tk);
+      moves.push(moveToUsi(mv)); pos = makeMove(pos, mv);
+    });
+    return { startSfen: START_SFEN, moves, ...meta };
+  }
+
   // ---- perft（テスト用） ----
   function perft(pos, depth) {
     if (depth === 0) return 1;
@@ -383,5 +532,6 @@
     side, kind, Position, fromSfen, toSfen, attacked, findKing, inCheck,
     genPseudo, legalMoves, hasLegalMove, makeMove,
     moveToUsi, moveFromUsi, sqToUsi, usiToSq, moveToKif, Game, perft,
+    declareInfo, MAX_PLY, toKifFile, parseKifu,
   };
 });
