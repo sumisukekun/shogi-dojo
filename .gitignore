@@ -1,5 +1,5 @@
 node_modules/
-data/
+/data/
+/backup/
 *.zip
 docs/HANDOFF_PRIVATE.md
-backup/
