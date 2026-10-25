@@ -37,7 +37,7 @@
   - nginx：`/etc/nginx/sites-available/shogi-dojo`（`server_name shogi.businessmaker.net` と旧仮ドメインだけを担当。旧ドメインは新ドメインへ301転送）
   - HTTPS：Let's Encrypt（certbot が自動更新）
 - **ConoHa のセキュリティグループ**：Web（80/443番）を開放済み。
-- VPS の支払いは 2026/10/25 に利用者が実施済み。
+- **2026/10/25、VPS（1か月契約）が期限切れで削除された。** ConoHa サポートに復旧を問い合わせ中（10/25 送信）。復旧できない場合は新しいVPSを作成し、setup.sh を実行、お名前.com の A レコード（shogi）を新IPに変更する。次回は自動更新を必ずオンにすること。
 
 ### 更新（デプロイ）の方法（いちばん簡単：オーナーのPCの PowerShell から1行）
 ```
