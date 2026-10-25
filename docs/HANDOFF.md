@@ -1,6 +1,6 @@
 # 将棋オンライン道場 — 開発引き継ぎ書（AI・開発者向け）
 
-最終更新：2026-10-22 ／ 本番：v05（2026-10-22 反映済み）
+最終更新：2026-10-25 ／ 本番：v05（独自ドメイン shogi.businessmaker.net に移行）
 
 この1ファイルを読めば、続きの開発を始められるようにまとめています。
 関連資料：
@@ -21,8 +21,8 @@
 
 | 種類 | 場所 |
 |---|---|
-| 公開サイト | https://shogi.163-44-143-132.sslip.io/ （仮ドメイン。sslip.io は IP を名前に変換する無料サービス） |
-| 稼働確認 | https://shogi.163-44-143-132.sslip.io/health |
+| 公開サイト | https://shogi.businessmaker.net/ （旧仮ドメイン shogi.163-44-143-132.sslip.io からは自動転送） |
+| 稼働確認 | https://shogi.businessmaker.net/health |
 | ソースコード | https://github.com/sumisukekun/shogi-dojo （公開リポジトリ、ブランチ `main`） |
 | 利用者のPC | `C:\Users\kimur\Visual_Studio_Code_Shota\`（v04 の zip を保存済み） |
 
@@ -34,14 +34,14 @@
   - アプリ本体：`/opt/shogi-dojo`（git clone。実行ユーザーは `shogi`）
   - 保存データ：`/opt/shogi-dojo/data/dojo.db`（SQLite。**これだけは消さない**）
   - 常駐：systemd の `shogi-dojo.service`（ポート 3000、`Restart=always`）
-  - nginx：`/etc/nginx/sites-available/shogi-dojo`（`server_name shogi.163-44-143-132.sslip.io` だけを担当）
+  - nginx：`/etc/nginx/sites-available/shogi-dojo`（`server_name shogi.businessmaker.net` と旧仮ドメインだけを担当。旧ドメインは新ドメインへ301転送）
   - HTTPS：Let's Encrypt（certbot が自動更新）
 - **ConoHa のセキュリティグループ**：Web（80/443番）を開放済み。
-- **VPS の有効期限は 2026/10/25**。自動更新・支払いは利用者に確認を依頼済み。
+- VPS の支払いは 2026/10/25 に利用者が実施済み。
 
 ### 更新（デプロイ）の方法（いちばん簡単：オーナーのPCの PowerShell から1行）
 ```
-ssh root@163.44.143.132 "cd /root && curl -fsSLo s.sh https://raw.githubusercontent.com/sumisukekun/shogi-dojo/main/deploy/setup.sh && DOMAIN=shogi.163-44-143-132.sslip.io bash s.sh | tail -n 8"
+ssh root@163.44.143.132 "cd /root && curl -fsSLo s.sh https://raw.githubusercontent.com/sumisukekun/shogi-dojo/main/deploy/setup.sh && DOMAIN=shogi.businessmaker.net OLD_DOMAINS=shogi.163-44-143-132.sslip.io bash s.sh | tail -n 8"
 ```
 パスワード入力後、1〜2分で「設置完了！」。PowerShell では `&&` が使えないため、必ず ssh の引用符の中に入れること。
 
@@ -50,7 +50,7 @@ ssh root@163.44.143.132 "cd /root && curl -fsSLo s.sh https://raw.githubusercont
 ```bash
 cd /root
 curl -fsSLo s.sh https://raw.githubusercontent.com/sumisukekun/shogi-dojo/main/deploy/setup.sh
-DOMAIN=shogi.163-44-143-132.sslip.io bash s.sh 2>&1 | tee l.log | tail -n 30
+DOMAIN=shogi.businessmaker.net OLD_DOMAINS=shogi.163-44-143-132.sslip.io bash s.sh 2>&1 | tee l.log | tail -n 30
 ```
 
 ### サーバー操作の注意（重要）

@@ -101,6 +101,13 @@ chmod +x /etc/cron.daily/shogi-dojo-backup
 # ---- nginx（Web公開・WebSocket対応） ----
 IP=$(curl -fsS4 --max-time 5 https://api.ipify.org 2>/dev/null || hostname -I | awk '{print $1}')
 NAMES="$IP"; [ -n "$DOMAIN" ] && NAMES="$DOMAIN"   # ドメイン指定時は IP を使わない（他サイトと共存するため）
+# OLD_DOMAINS: 以前使っていたドメイン（空白区切り）。新しいドメインへ自動で転送する
+OLD_DOMAINS="${OLD_DOMAINS:-}"
+[ -n "$DOMAIN" ] && [ -n "$OLD_DOMAINS" ] && NAMES="$DOMAIN $OLD_DOMAINS"
+REDIR=""
+if [ -n "$DOMAIN" ] && [ -n "$OLD_DOMAINS" ]; then
+  REDIR="if (\$host != $DOMAIN) { return 301 https://$DOMAIN\$request_uri; }"
+fi
 if [ -d /etc/nginx/sites-available ]; then
   CONF=/etc/nginx/sites-available/shogi-dojo
   ln -sf "$CONF" /etc/nginx/sites-enabled/shogi-dojo
@@ -115,6 +122,7 @@ server {
   server_name $NAMES;
   client_max_body_size 1m;
   location / {
+    $REDIR
     proxy_pass http://127.0.0.1:$PORT;
     proxy_http_version 1.1;
     proxy_set_header Upgrade \$http_upgrade;
@@ -140,8 +148,9 @@ if command -v getenforce >/dev/null && [ "$(getenforce)" = Enforcing ]; then set
 if [ -n "$DOMAIN" ]; then
   say "HTTPS を設定しています（$DOMAIN）"
   if [ $PM = apt ]; then apt-get install -y certbot python3-certbot-nginx; else dnf install -y certbot python3-certbot-nginx; fi
-  if [ -n "$EMAIL" ]; then certbot --nginx -n --agree-tos -m "$EMAIL" -d "$DOMAIN" --redirect
-  else certbot --nginx -n --agree-tos --register-unsafely-without-email -d "$DOMAIN" --redirect; fi
+  DARGS="-d $DOMAIN"; for d in $OLD_DOMAINS; do DARGS="$DARGS -d $d"; done
+  if [ -n "$EMAIL" ]; then certbot --nginx -n --agree-tos -m "$EMAIL" $DARGS --expand --redirect
+  else certbot --nginx -n --agree-tos --register-unsafely-without-email $DARGS --expand --redirect; fi
 fi
 
 # ---- 確認 ----
